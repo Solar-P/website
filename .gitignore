@@ -3,4 +3,6 @@ dist/
 .astro/
 .env
 .DS_Store
-README.md
+/GIS_DATA_PORTFOLIO_SPEC.md
+/MAP-SETTINGS-RU.md
+/README.md

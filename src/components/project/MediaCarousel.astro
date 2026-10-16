@@ -1,0 +1,19 @@
+---
+import { assetPath } from '../../utils/paths';
+interface Media { type: 'image' | 'video'; src: string; alt: string; caption?: string; poster?: string }
+interface Props { items: Media[] }
+const {items} = Astro.props;
+---
+<section class="case-media" data-media-carousel aria-label="Project images and videos" aria-roledescription="carousel">
+  <div class="case-media-stage">
+    {items.map((item,i) => <figure class="case-media-slide" data-media-slide role="group" aria-roledescription="slide" aria-label={String(i+1) + ' of ' + items.length}>
+      {item.type === 'video' ? <video controls playsinline preload="metadata" poster={item.poster ? assetPath(item.poster) : undefined} aria-label={item.alt}><source src={assetPath(item.src)} /><a href={assetPath(item.src)}>Download video</a></video> : <a class="zoom-image" href={assetPath(item.src)} data-lightbox aria-label={'Enlarge: ' + item.alt}><img src={assetPath(item.src)} alt={item.alt} loading={i === 0 ? 'eager' : 'lazy'} /></a>}
+    </figure>)}
+    {items.length > 1 && <div class="carousel-controls" data-media-controls hidden>
+      <button class="icon-button" data-media-prev aria-label="Previous media"><svg viewBox="0 0 32 56" aria-hidden="true"><path d="M27 5 5 28l22 23" /></svg></button>
+      <button class="icon-button" data-media-next aria-label="Next media"><svg viewBox="0 0 32 56" aria-hidden="true"><path d="m5 5 22 23L5 51" /></svg></button>
+    </div>}
+  </div>
+  <div class="case-media-caption"><p data-media-caption>{items[0]?.caption}</p>{items.length > 1 && <p data-media-status aria-live="polite" aria-atomic="true">1 / {items.length}</p>}</div>
+  {items.map(item => <template data-caption>{item.caption || ''}</template>)}
+</section>

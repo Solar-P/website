@@ -1,0 +1,13 @@
+---
+import { getCollection } from 'astro:content';
+import { localPath, assetPath } from '../../utils/paths';
+const projects = (await getCollection('projects', ({data}) => !data.draft && data.featured)).sort((a,b) => a.data.order - b.data.order);
+---
+<section class="section container" id="projects" aria-labelledby="projects-title">
+  <div class="section-top"><div><p class="eyebrow section-index">01 / SELECTED WORK</p><h2 id="projects-title">Featured Projects<span>.</span></h2></div></div>
+  <p class="section-intro">Maps, spatial analysis, and data in practice.</p>
+  {projects.length ? <div class="project-carousel"><div class="carousel-controls" hidden><button class="icon-button" data-prev aria-label="Previous projects" aria-controls="project-track"><svg viewBox="0 0 32 56" aria-hidden="true"><path d="M27 5 5 28l22 23" /></svg></button><button class="icon-button" data-next aria-label="Next projects" aria-controls="project-track"><svg viewBox="0 0 32 56" aria-hidden="true"><path d="m5 5 22 23L5 51" /></svg></button></div><div class="project-track" id="project-track" tabindex="0" aria-label="Featured projects">{projects.map(({id,data}) => <a class="project-card" href={localPath('projects/' + id + '/')}>
+    <div class="project-cover">{data.coverImage ? <img src={assetPath(data.coverImage)} alt={data.coverAlt} width="720" height="720" loading="lazy" /> : <div class="cover-placeholder"><span>Project preview<br />coming soon</span></div>}</div>
+    <div class="project-card-copy"><p class="eyebrow">{data.category}</p><h3>{data.title}<span aria-hidden="true">↗</span></h3><p>{data.subtitle}</p><div class="tags">{data.technologies.map(t => <span>{t}</span>)}</div></div>
+  </a>)}</div></div> : <div class="projects-empty"><div class="empty-symbol" aria-hidden="true">↗</div><div><h3>A closer look at the work.</h3><p>Selected projects and case studies are being prepared.<br />Check back soon to explore the details.</p></div><span class="quiet-label">PORTFOLIO IN PROGRESS</span></div>}
+</section>

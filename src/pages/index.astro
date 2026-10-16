@@ -1,0 +1,19 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import WorldMapAnimation from '../components/home/WorldMapAnimation.astro';
+import ProjectCarousel from '../components/home/ProjectCarousel.astro';
+import { site } from '../data/site';
+import { experience } from '../data/experience';
+import { assetPath } from '../utils/paths';
+---
+<BaseLayout>
+  <section class="hero" aria-labelledby="hero-title">
+    <WorldMapAnimation />
+    <div class="container hero-content"><p class="eyebrow hero-eyebrow"><span></span> GIS & DATA SPECIALIST</p><h1 id="hero-title">Linar Abzalov<span>.</span></h1><p class="hero-description">{site.description}</p><div class="hero-actions"><a class="button button-primary" href="#projects">View Projects <span aria-hidden="true">↗</span></a><a class="button button-secondary" href="#about">About Me <span aria-hidden="true">→</span></a></div></div>
+    <div class="container hero-bottom"><a href="#projects" data-explore>Scroll to explore <span aria-hidden="true">↓</span></a><span class="hero-note">GEOGRAPHY. DATA. PERSPECTIVE.</span></div>
+  </section>
+  <ProjectCarousel />
+  <section class="section" id="about" aria-labelledby="about-title"><div class="container about-grid"><div class="about-heading"><p class="eyebrow section-index">02 / THE PERSON BEHIND THE MAPS</p><h2 id="about-title">About Me<span>.</span></h2></div><div class="about-profile"><div class="identity">{site.portrait ? <img class="portrait" src={assetPath(site.portrait)} alt="Linar Abzalov" width="104" height="104" loading="lazy" /> : <div class="portrait portrait-placeholder" aria-label="Portrait placeholder">LA<span>.</span></div>}<div><h3>{site.name}</h3><p>{site.role}</p></div></div><p class="about-copy">{site.about}</p></div><div class="toolkit"><h3>Technical Toolkit</h3>{site.toolkit.map((group,i) => <div class="toolkit-row"><span class="toolkit-number">0{i + 1}</span><div><h4>{group.name}</h4><div class="tags">{group.tools.map(tool => <span>{tool}</span>)}</div></div></div>)}</div></div></section>
+  <section class="section container" id="experience" aria-labelledby="experience-title"><p class="eyebrow section-index">03 / PROFESSIONAL BACKGROUND</p><h2 id="experience-title">Experience<span>.</span></h2><div class="experience-grid">{experience.map((group,i) => <div class:list={['experience-group',{'secondary':i > 0}]}><div class="experience-group-title"><span aria-hidden="true">{i === 0 ? '◎' : '⌘'}</span><h3>{group.name}</h3></div>{group.jobs.map(job => <article class="job"><div class="job-heading"><h4>{job.company}</h4>{job.dates && <span>{job.dates}</span>}</div>{job.role && <p class="job-role">{job.role}</p>}{job.points?.length && <ul>{job.points.map(point => <li>{point}</li>)}</ul>}</article>)}</div>)}</div>{site.cv && <a class="button button-secondary" href={assetPath(site.cv)} download>Download Full CV ↓</a>}</section>
+  <section class="section contact" id="contact" aria-labelledby="contact-title"><div class="container"><p class="eyebrow availability"><span></span> OPEN TO OPPORTUNITIES</p><h2 id="contact-title">Let's connect<span>.</span></h2><p>Interested in working together or discussing a project?<br class="desktop-break" /> Feel free to reach out.</p><div class="contact-links">{site.email && <a class="contact-main" href={'mailto:' + site.email}>Get in touch ↗</a>}{site.github && <a href={site.github} target="_blank" rel="noopener noreferrer">GitHub ↗</a>}{site.linkedin && <a href={site.linkedin} target="_blank" rel="noopener noreferrer">LinkedIn ↗</a>}</div></div></section>
+</BaseLayout>

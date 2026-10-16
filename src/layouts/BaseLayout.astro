@@ -1,0 +1,37 @@
+---
+import '@fontsource-variable/inter';
+import '@fontsource-variable/space-grotesk';
+import '../styles/global.css';
+import { site } from '../data/site';
+import { localPath } from '../utils/paths';
+interface Props { title?: string; description?: string; noindex?: boolean }
+const { title = 'Linar Abzalov — GIS & Data Specialist', description = site.description, noindex = false } = Astro.props;
+const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site) : undefined;
+const links = [['projects','Projects'],['about','About Me'],['experience','Experience'],['contact','Contact']];
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title><meta name="description" content={description} />
+    <meta name="theme-color" content="#101820" /><link rel="icon" type="image/svg+xml" href={localPath('favicon.svg')} />
+    {canonical && <link rel="canonical" href={canonical} />}
+    {noindex && <meta name="robots" content="noindex, follow" />}
+    <meta property="og:title" content={title} /><meta property="og:description" content={description} /><meta property="og:type" content="website" />
+    {canonical && <><meta property="og:url" content={canonical} /><meta property="og:image" content={new URL(localPath('media/social-preview.png'), Astro.site)} /></>}
+    <meta name="twitter:card" content="summary_large_image" />
+  </head>
+  <body id="top">
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="header"><div class="container header-inner">
+      <a class="wordmark" href={localPath('')} aria-label="Linar Abzalov — home">LA<span>.</span></a>
+      <button class="menu-toggle" aria-expanded="false" aria-controls="main-nav" hidden>Menu <span aria-hidden="true">＋</span></button>
+      <nav id="main-nav" aria-label="Main navigation">{links.map(([id,label]) => <a data-section={id} href={localPath('') + '#' + id}>{label}</a>)}</nav>
+    </div></header>
+    <main id="main"><slot /></main>
+    <footer class="footer-shell"><div class="container footer"><span>© {new Date().getFullYear()} {site.name}</span><a href="#top">Back to top <span aria-hidden="true">↑</span></a></div></footer>
+    <script>
+      import '../scripts/ui';
+    </script>
+  </body>
+</html>

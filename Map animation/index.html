@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Animated Continent Map</title>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+  <style>
+    :root {
+      --background: #101820;
+      --coast: #83c7ca;
+      --land-fill: #23434d;
+      --land-opacity: .40; /* Final strength of land shading (0–1) */
+      --shimmer-duration: 5.2s; /* One complete post-drawing shimmer cycle */
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: var(--background);
+    }
+
+    #world {
+      display: block;
+      width: 95vw;
+      max-width: 1400px;
+      height: auto;
+      overflow: visible;
+    }
+
+    /* The fill sits BEHIND all animated coastlines and has no stroke. */
+    #land-fills { opacity: 0; }
+    .land-fill {
+      fill: var(--land-fill);
+      fill-opacity: var(--land-opacity);
+      fill-rule: evenodd;
+      stroke: none;
+      pointer-events: none;
+    }
+
+    /* Same appearance for both coastline layers from the very beginning. */
+    .continent,
+    .island {
+      fill: none;
+      stroke: var(--coast);
+      stroke-width: 1.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      filter: drop-shadow(0 0 2px rgba(131, 199, 202, .35));
+    }
+
+    /* JavaScript reveals islands gradually and reaches exactly 1 at 100%. */
+    .island { opacity: 0; }
+
+    /* Both layers start and finish each shimmer cycle at full brightness. */
+    #world.map-finished #continents,
+    #world.map-finished #islands,
+    #world.map-finished #land-fill-shimmer {
+      animation: coastline-shimmer var(--shimmer-duration) ease-in-out infinite;
+    }
+
+    @keyframes coastline-shimmer {
+      0%, 1%, 50%, 100% { opacity: 1; }
+      56%           { opacity: .60; }
+    }
+
+    /* Bright moving tips. They are removed once drawing is complete. */
+    .trace-tip {
+      pointer-events: none;
+    }
+
+    .trace-tip-glow {
+      fill: #9ef5f4;
+      opacity: .9;
+      filter: url(#tip-glow);
+    }
+
+    .trace-tip-core {
+      fill: #e1ffff;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .island { opacity: 1; }
+      #world.map-finished #continents,
+      #world.map-finished #islands,
+      #world.map-finished #land-fill-shimmer { animation: none; }
+    }
+  </style>
+</head>
+<body>
+  <svg id="world" viewBox="0 0 1200 600" role="img"
+       aria-label="Stylised animated outlines of the world's continents">
+  </svg>
+
+  <script>
+    const ANIMATION_DURATION = 5000; // Entire drawing cycle, milliseconds
+    const TIP_FADE_DURATION = 550;
+    const FILL_FADE_DURATION = 3000; // Fill fades in AFTER coastlines finish, ms
+    const ISLAND_START_MS = 1200; // First islands start becoming visible
+    const ISLAND_STAGGER_MS = 2200; // Spread of subsequent island start times
+
+    // Keep only exterior polygon rings, preventing D3 from drawing the map frame.
+    function toCoastlines(collection) {
+      const features = [];
+
+      for (const feature of collection.features) {
+        const geometry = feature.geometry;
+        if (!geometry) continue;
+
+        const polygons = geometry.type === "Polygon"
+          ? [geometry.coordinates]
+          : geometry.type === "MultiPolygon"
+            ? geometry.coordinates
+            : [];
+
+        for (const rings of polygons) {
+          const ring = rings[0];
+          if (!ring || ring.length < 2) continue;
+
+          features.push({
+            type: "Feature",
+            properties: feature.properties || {},
+            geometry: { type: "LineString", coordinates: ring }
+          });
+        }
+      }
+
+      return { type: "FeatureCollection", features };
+    }
+
+    // Return the interior rings (holes) as independent coastlines.
+    // In this Natural Earth dataset the Eurasian polygon contains
+    // one such ring: the Caspian Sea. The fill already respects this hole.
+    function toInteriorCoastlines(collection) {
+      const features = [];
+
+      for (const feature of collection.features) {
+        const geometry = feature.geometry;
+        if (!geometry) continue;
+
+        const polygons = geometry.type === "Polygon"
+          ? [geometry.coordinates]
+          : geometry.type === "MultiPolygon"
+            ? geometry.coordinates
+            : [];
+
+        for (const rings of polygons) {
+          for (const ring of rings.slice(1)) {
+            if (!ring || ring.length < 4) continue;
+            features.push({
+              type: "Feature",
+              properties: feature.properties || {},
+              geometry: { type: "LineString", coordinates: ring }
+            });
+          }
+        }
+      }
+
+      return { type: "FeatureCollection", features };
+    }
+    // D3 expects small GeoJSON polygons with clockwise exterior rings,
+    // whereas Natural Earth/ArcGIS export CCW exterior rings.
+    // Correct winding means d3.geoPath can safely handle the date-line cut
+    // instead of our old direct d3.line() filling that caused phantom lines.
+    function signedArea(ring) {
+      let area = 0;
+      for (let i = 1; i < ring.length; i++) {
+        const a = ring[i - 1];
+        const b = ring[i];
+        area += a[0] * b[1] - b[0] * a[1];
+      }
+      return area / 2;
+    }
+
+    function forD3Fill(feature) {
+      const geometry = feature.geometry;
+      const polygons = geometry.type === "Polygon"
+        ? [geometry.coordinates]
+        : geometry.type === "MultiPolygon"
+          ? geometry.coordinates : [];
+
+      const adjusted = polygons.map(rings => rings.map((ring, index) => {
+        const clockwise = index === 0;
+        const reverse = clockwise ? signedArea(ring) > 0 : signedArea(ring) < 0;
+        return reverse ? [...ring].reverse() : ring;
+      }));
+
+      return {
+        type: "Feature",
+        properties: feature.properties || {},
+        geometry: {
+          type: geometry.type,
+          coordinates: geometry.type === "Polygon" ? adjusted[0] : adjusted
+        }
+      };
+    }
+
+    function easeInOutCubic(t) {
+      return t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    }
+
+    function createTraceTip(layer) {
+      const tip = layer.append("g")
+        .attr("class", "trace-tip")
+        .style("opacity", 1);
+
+      tip.append("circle")
+        .attr("class", "trace-tip-glow")
+        .attr("r", 5.5);
+
+      tip.append("circle")
+        .attr("class", "trace-tip-core")
+        .attr("r", 2.0);
+
+      return tip;
+    }
+
+    function moveTraceTip(tip, pathNode, distance) {
+      // getPointAtLength follows the *actual rendered SVG geometry*, including
+      // geographical clipping and the special open Antarctic coastline.
+      const position = pathNode.getPointAtLength(distance);
+      tip.attr("transform", `translate(${position.x},${position.y})`);
+    }
+
+    async function drawMap() {
+      const [major, islands] = await Promise.all([
+        d3.json("world-major.geojson"), // use the revised ArcGIS export
+        d3.json("world-islands.geojson")
+      ]);
+
+      const majorLines = toCoastlines(major);
+      const islandLines = toCoastlines(islands);
+      const inlandCoastlines = toInteriorCoastlines(major);
+      // Interior coastlines use the island reveal timeline, so the
+      // Caspian Sea appears gradually instead of being traced.
+      const fadingCoastlines = [
+        ...islandLines.features,
+        ...inlandCoastlines.features
+      ];
+      const allLines = {
+        type: "FeatureCollection",
+        features: [...majorLines.features, ...islandLines.features]
+      };
+
+      const svg = d3.select("#world");
+      svg.selectAll("*").remove();
+
+      svg.append("defs")
+        .append("filter")
+        .attr("id", "tip-glow")
+        .attr("x", "-250%")
+        .attr("y", "-250%")
+        .attr("width", "600%")
+        .attr("height", "600%")
+        .html(`
+          <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" result="blur-near" />
+          <feGaussianBlur in="SourceGraphic" stdDeviation="7" result="blur-far" />
+          <feMerge>
+            <feMergeNode in="blur-far" />
+            <feMergeNode in="blur-near" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        `);
+
+      const projection = d3.geoNaturalEarth1()
+        .fitExtent([[20, 20], [1180, 580]], allLines);
+      const geoPath = d3.geoPath(projection);
+      // Unlike geoPath, a projected SVG line doesn't clip/split Antarctica
+      // at the antimeridian. Its open geometry has a single continuous path.
+      const polarPath = d3.line()
+        .x(point => projection(point)[0])
+        .y(point => projection(point)[1]);
+
+      // Fills are rendered separately, *behind* the animated coastlines.
+      // D3's geoPath handles the antimeridian and ring winding for land.
+      // Antarctica keeps its custom open coast and gets its own fill cap.
+      svg.select("defs").append("clipPath")
+        .attr("id", "land-viewport")
+        .append("rect")
+        .attr("x", 0).attr("y", 0)
+        .attr("width", 1200).attr("height", 600);
+
+      const landFills = svg.append("g")
+        .attr("id", "land-fills")
+        .attr("clip-path", "url(#land-viewport)");
+      const landFillShimmer = landFills.append("g")
+        .attr("id", "land-fill-shimmer");
+
+      for (const feature of [...major.features, ...islands.features]) {
+        let fillPath;
+        if (isAntarctica({ geometry: {
+          coordinates: feature.geometry.type === "Polygon"
+            ? feature.geometry.coordinates[0]
+            : (feature.geometry.coordinates[0]?.[0] || [])
+        }})) {
+          const { coast, capLatitude } = getAntarcticShape(
+            feature.geometry.coordinates[0]
+          );
+          if (coast.length < 3) continue;
+          const coastalD = polarPath(coast);
+          const first = projection(coast[0]);
+          const last = projection(coast.at(-1));
+          const capY = projection([0, capLatitude])[1];
+          // The closing edge exists only in the FILL path (stroke:none).
+          // Unlike the previous hardcoded y=620, its height follows the
+          // actually trimmed Antarctic polygon from ArcGIS.
+          fillPath = `${coastalD}L${last[0]},${capY}L${first[0]},${capY}Z`;
+        } else {
+          fillPath = geoPath(forD3Fill(feature));
+        }
+        if (fillPath) {
+          landFillShimmer.append("path")
+            .attr("class", "land-fill")
+            .attr("d", fillPath);
+        }
+      }
+
+      const continentLayer = svg.append("g").attr("id", "continents");
+      const traces = [];
+
+      for (const feature of majorLines.features) {
+        const antarctica = isAntarctica(feature);
+        const d = antarctica
+          ? polarPath(getAntarcticShape(feature.geometry.coordinates).coast)
+          : geoPath(feature);
+        if (!d) continue;
+
+        const group = continentLayer.append("g");
+        const forward = group.append("path")
+          .attr("class", "continent")
+          .attr("d", d)
+          .node();
+        const backward = group.append("path")
+          .attr("class", "continent")
+          .attr("d", d)
+          .node();
+
+        const length = forward.getTotalLength();
+        if (!Number.isFinite(length) || length <= 0) continue;
+
+        traces.push({
+          forward,
+          backward,
+          length,
+          antarctica
+        });
+      }
+
+      // Islands all have the same stroke width/glow as continents.
+      // We stagger their start times but they ALL reach opacity 1 exactly
+      // at ANIMATION_DURATION, without a final abrupt CSS class override.
+      const islandPaths = svg.append("g")
+        .attr("id", "islands")
+        .selectAll("path")
+        .data(fadingCoastlines)
+        .join("path")
+        .attr("class", "island")
+        .attr("d", geoPath)
+        .nodes();
+
+      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const tipsLayer = svg.append("g").attr("id", "drawing-tips");
+
+      if (!reducedMotion) {
+        for (const trace of traces) {
+          trace.forwardTip = createTraceTip(tipsLayer);
+          trace.backwardTip = createTraceTip(tipsLayer);
+        }
+      }
+
+      function render(progress) {
+        const fraction = easeInOutCubic(progress);
+        const elapsed = progress * ANIMATION_DURATION;
+
+        // Islands smoothly brighten to the same opacity as continents,
+        // finishing on the SAME frame as the main coastline animation.
+        islandPaths.forEach((node, i) => {
+          const delay = Math.min(
+            ISLAND_START_MS + (i * 19) % ISLAND_STAGGER_MS,
+            ANIMATION_DURATION - 1
+          );
+          const islandProgress = Math.max(0, Math.min(
+            (elapsed - delay) / (ANIMATION_DURATION - delay), 1
+          ));
+          node.style.opacity = easeInOutCubic(islandProgress);
+        });
+
+        for (const trace of traces) {
+          const half = trace.length / 2;
+          const visible = half * fraction;
+          const dash = `${visible} ${trace.length + 2}`;
+
+          trace.forward.style.strokeDasharray = dash;
+          trace.backward.style.strokeDasharray = dash;
+
+          if (trace.antarctica) {
+            // Continuous open Antarctic coast: draw outwards from its midpoint.
+            trace.forward.style.strokeDashoffset = -half;
+            trace.backward.style.strokeDashoffset = -(half - visible);
+            if (trace.forwardTip) {
+              moveTraceTip(trace.forwardTip, trace.forward, half + visible);
+              moveTraceTip(trace.backwardTip, trace.backward, half - visible);
+            }
+          } else {
+            // Continent outlines: draw from both ends towards the midpoint.
+            trace.forward.style.strokeDashoffset = 0;
+            trace.backward.style.strokeDashoffset = -(trace.length - visible);
+            if (trace.forwardTip) {
+              moveTraceTip(trace.forwardTip, trace.forward, visible);
+              moveTraceTip(trace.backwardTip, trace.backward, trace.length - visible);
+            }
+          }
+        }
+      }
+
+      // The two tracing paths overlap at 100%. Keep just one so the
+      // finished continents don't glow twice as brightly as islands.
+      // No island brightness/width changes here: render(1) already set
+      // their exact finished appearance before the shimmer starts.
+      function finishMap() {
+        // Retain only one completed path per continent.
+        for (const trace of traces) {
+          trace.forward.style.strokeDasharray = "none";
+          trace.forward.style.strokeDashoffset = "0";
+          trace.backward.remove();
+        }
+
+        // First display the fully drawn coastlines. Keep them at full
+        // brightness while the land fill is gradually revealed.
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            if (reducedMotion) {
+              landFills.style("opacity", 1);
+              svg.classed("map-finished", true);
+              return;
+            }
+
+            landFills.transition()
+              .duration(FILL_FADE_DURATION)
+              .ease(d3.easeCubicInOut)
+              .style("opacity", 1)
+              .on("end", () => {
+                // Start the shared shimmer only AFTER the fill is complete.
+                requestAnimationFrame(() => {
+                  svg.classed("map-finished", true);
+                });
+              });
+          });
+        });
+      }
+
+      if (reducedMotion) {
+        render(1);
+        finishMap();
+        return;
+      }
+
+      render(0);
+      let startTime;
+
+      function frame(now) {
+        if (startTime === undefined) startTime = now;
+        const progress = Math.min((now - startTime) / ANIMATION_DURATION, 1);
+        render(progress);
+
+        if (progress < 1) {
+          requestAnimationFrame(frame);
+        } else {
+          finishMap();
+          tipsLayer.transition()
+            .duration(TIP_FADE_DURATION)
+            .ease(d3.easeCubicOut)
+            .style("opacity", 0)
+            .remove();
+        }
+      }
+
+      requestAnimationFrame(frame);
+    }
+
+    drawMap().catch(error => console.error("Map loading error:", error));
+  </script>
+</body>
+</html>

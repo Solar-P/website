@@ -1,0 +1,17 @@
+{
+  "drawDurationMs": 5000,
+  "fillDurationMs": 3000,
+  "tipFadeDurationMs": 550,
+  "islandStartMs": 1200,
+  "islandStaggerMs": 2200,
+  "islandStepMs": 19,
+  "flashDurationMs": 1200,
+  "cityIntervalMs": 1000,
+  "labelFadeDurationMs": 220,
+  "flashIgnitionMs": 35,
+  "shimmerDurationMs": 5200,
+  "shimmerMinOpacity": 0.7,
+  "landOpacity": 0.4,
+  "labelFontSize": 7.5,
+  "labelGap": 4
+}

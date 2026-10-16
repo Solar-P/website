@@ -1,0 +1,6 @@
+---
+import { assetPath } from '../../utils/paths';
+interface Props { images: {src: string; alt: string; caption?: string}[] }
+const { images } = Astro.props;
+---
+<div class="gallery">{images.map(image => <figure><a class="zoom-image" href={assetPath(image.src)} data-lightbox aria-label={'Enlarge: ' + image.alt}><img src={assetPath(image.src)} alt={image.alt} width="1200" height="800" loading="lazy" /></a>{image.caption && <figcaption>{image.caption}</figcaption>}</figure>)}</div>

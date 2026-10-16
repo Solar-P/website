@@ -1,0 +1,65 @@
+---
+title: "Bike-share Behaviour"
+subtitle: "Understanding the journeys behind the numbers."
+summary: "An R and Tableau case study comparing casual riders and annual members using twelve months of Chicago bike-share trip data."
+category: "DATA & VISUALISATION"
+order: 3
+coverImage: "/media/projects/bikes/preview.webp"
+coverAlt: "Original Tableau dashboard comparing casual and member bike-share usage"
+media:
+  - type: image
+    src: /media/projects/bikes/preview.webp
+    alt: Original Tableau dashboard comparing casual and member bike-share usage
+    caption: Bike-share usage overview
+  - type: image
+    src: /media/projects/bikes/hourly.webp
+    alt: Trips by hour and membership type
+    caption: Hourly travel patterns
+  - type: image
+    src: /media/projects/bikes/weekly.webp
+    alt: Weekday trips and duration by membership type
+    caption: Weekday usage and trip duration
+technologies: ["R","Tableau","data.table","dplyr"]
+repositoryUrl: "https://github.com/Solar-P/Bike_share_company_analysis_R/blob/main/bike-share-company-case-study.ipynb"
+region: "Chicago, United States"
+dataSources: ["Divvy trip data, November 2023–October 2024"]
+featured: true
+draft: false
+---
+
+## Overview
+
+How do casual riders and annual members use bike-share services differently? This case study uses real Divvy trip data to explore that question within the fictional Cyclistic marketing scenario.
+
+## The Challenge
+
+Twelve monthly CSV files contain millions of trips. Before comparing rider groups, the analysis must reconcile missing station information, duplicates, geographic outliers and invalid trip durations.
+
+## Approach & Development
+
+The workflow follows six phases: Ask, Prepare, Process, Analyze, Share and Act. R’s data.table package reads the monthly files, while tidyr, dplyr and readr support preparation and analysis.
+
+The cleaning stage checks unique ride identifiers, filters geographic anomalies and invalid duration values, and creates time-based attributes for aggregation. It retains records with missing station fields because other attributes remain useful; station-level findings must account for those gaps.
+
+After cleaning, **5,473,753 trips** remain. The notebook records **459,959 removed rows**. Tableau visualisations compare the two rider groups by weekday, month, hour and bicycle type.
+
+## Key Challenges & Solutions
+
+### Missing stations without losing useful trips
+
+More than a quarter of the source records have missing station information. Deleting all of them would remove useful timing and membership information, so the analysis keeps them and notes the limitation for relevant comparisons.
+
+### Distinguishing usage from preference
+
+Bike-type counts alone cannot establish user preference: the data does not describe the supply or geographic distribution of each type. The case study treats that comparison as exploratory.
+
+## Final Result
+
+Members account for approximately **66%** of analysed trips and casual riders for **34%**. Members show stronger weekday use and peaks around 08:00 and 17:00, while casual usage is more concentrated on weekends. Both groups show pronounced seasonal variation.
+
+These patterns support the notebook’s proposed focus on weekend campaigns and clearer communication of membership benefits. They are recommendations from a case study, not measured campaign outcomes.
+
+<Gallery images={[{src:'/media/projects/bikes/hourly.webp',alt:'Original Tableau chart of trips by hour and membership type',caption:'Hourly travel patterns from the original notebook.'},{src:'/media/projects/bikes/weekly.webp',alt:'Original Tableau comparison of weekday trips and duration',caption:'Weekday usage and trip duration by rider group.'}]} />
+
+See the [original notebook](https://github.com/Solar-P/Bike_share_company_analysis_R/blob/main/bike-share-company-case-study.ipynb) for the complete cleaning process, visualisations and recommendations.
+

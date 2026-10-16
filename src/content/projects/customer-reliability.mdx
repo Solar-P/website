@@ -1,0 +1,58 @@
+---
+title: "Customer Reliability Analysis"
+subtitle: "From messy records to clear, comparable groups."
+summary: "An exploratory Python notebook examining repayment patterns across customer groups, with a focus on data cleaning, categorisation and transparent comparisons."
+category: "DATA ANALYSIS"
+order: 4
+coverImage: "/media/projects/banking/preview.webp"
+coverAlt: "Chart of observed repayment arrears by loan purpose: car 9.3%, education 9.3%, wedding 7.9%, real estate 7.3%"
+technologies: ["Python","pandas"]
+repositoryUrl: "https://github.com/Solar-P/Data_analytics_projects_python/blob/5266e5f18fc69352fb2ea274e6c4ac41e7742cf3/Banking_analytics/Investigation_of_customer_reliability.ipynb"
+dataSources: ["clients_data.csv, as documented in the notebook"]
+featured: true
+draft: false
+---
+
+## Overview
+
+This notebook investigates how observed repayment arrears vary with the number of children, marital status, income category and loan purpose. It follows a structured process of reviewing, cleaning, analysing and summarising a customer dataset.
+
+The bank credit department is the notebook’s case-study scenario; the project is presented here as an analytical study.
+
+## The Challenge
+
+The source table contains missing values, inconsistent text, duplicate records and implausible values. These issues need to be addressed before customer groups can be compared meaningfully.
+
+## Approach & Development
+
+Using pandas, the notebook inspects the dataset and applies a documented cleaning workflow:
+
+- Fill missing income and employment-duration values using employment-type group medians.
+- Convert negative employment durations to positive values and remove anomalous child counts.
+- Standardise text, handle duplicates and adjust data types.
+- Group income into bands and normalise loan purposes into four categories.
+- Build pivot tables with counts and proportions of customers with repayment arrears.
+
+## Key Challenges & Solutions
+
+Group sizes differ substantially, so the analysis compares proportions alongside counts. The notebook also identifies remaining anomalies in employment duration and addresses zero ages as missing data.
+
+Some categories contain very few observations. Their percentages should be treated cautiously, and the cleaning assumptions remain part of the interpretation.
+
+## Final Result
+
+The output is a set of reproducible comparisons answering the four research questions. For loan purpose, the notebook reports:
+
+| Loan purpose | Records with arrears | Total records | Observed share |
+| --- | --- | --- | --- |
+| Car | 400 | 4,279 | 9.3% |
+| Education | 369 | 3,988 | 9.3% |
+| Wedding | 183 | 2,305 | 7.9% |
+| Real estate | 739 | 10,120 | 7.3% |
+
+<Callout>
+These are descriptive associations in the supplied dataset. They do not establish causes, individual creditworthiness, or a validated lending model. The portfolio chart is redrawn from the notebook’s reported values.
+</Callout>
+
+The [original notebook](https://github.com/Solar-P/Data_analytics_projects_python/blob/5266e5f18fc69352fb2ea274e6c4ac41e7742cf3/Banking_analytics/Investigation_of_customer_reliability.ipynb) contains the code, output tables and original interpretation.
+

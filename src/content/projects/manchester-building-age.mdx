@@ -1,0 +1,69 @@
+---
+title: "How Old Is Manchester?"
+subtitle: "Revealing the city’s history through its buildings."
+summary: "An interactive map of Manchester’s building ages, connecting open building footprints, property locations and energy performance records."
+category: "GIS & CARTOGRAPHY"
+order: 2
+coverImage: "/media/projects/manchester/preview.webp"
+coverAlt: "Manchester building footprints coloured by construction period on a dark basemap"
+technologies: ["ArcGIS Pro","QGIS","Power Query","Vector tiles"]
+liveUrl: "https://solar-p.github.io/manchester-building-age-map/#17/53.45240/-2.23235"
+repositoryUrl: "https://github.com/Solar-P/manchester-building-age-map"
+region: "Manchester, United Kingdom"
+dataSources: ["OpenStreetMap / Geofabrik","OS Open UPRN","Open EPC data"]
+featured: true
+draft: false
+---
+
+## Overview
+
+How Old Is Manchester? explores the city’s development through the construction periods of its buildings. Inspired by *How Old Is This House?*, the project asks what can be achieved using openly available data.
+
+## The Challenge
+
+OpenStreetMap provides building footprints, but many lack construction dates. EPC records contain construction-age bands, yet they describe properties rather than building polygons. A reliable connection between these different units was needed before a useful map could be made.
+
+## Approach & Development
+
+### Connecting three open datasets
+
+OS Open UPRN points served as the bridge between OSM footprints and EPC records. A spatial join with an approximately one-metre search radius associated property points with buildings. Spatial and attribute filtering retained approximately **256,000 linked UPRN points**.
+
+EPC records were cleaned in Excel / Power Query. Records were grouped by UPRN, keeping the certificate with the most recent lodgement date, then joined to the spatial data.
+
+### From properties to buildings
+
+Terraces and apartment blocks can contain multiple UPRNs inside one OSM polygon. Aggregation produced around **59,000 buildings** with linked data; approximately **15,700** had more than one UPRN.
+
+| Situation | Treatment |
+| --- | --- |
+| One age band represents at least 70% of available records | Assign that age band |
+| Conflicting records without sufficient agreement | Mark as uncertain / conflicting |
+| No available EPC age | Mark as No Data |
+
+The original EPC age bands were grouped into broader historical periods to keep the legend readable. The processed layer was exported to GeoPackage and styled in QGIS.
+
+## Key Challenges & Solutions
+
+### Keeping uncertainty visible
+
+Missing footprints, unmatched UPRNs and conflicting age records limit coverage. Uncertainty and missing values remain explicit categories instead of being presented as known construction dates.
+
+### Delivering a large layer on the web
+
+The initial GeoJSON export was approximately **31 MB**. Loading and processing all building polygons in the browser made the published map slow. Converting the building layer to **PBF vector tiles** allowed the browser to request only the current extent and zoom level.
+
+### Publishing only necessary attributes
+
+Addresses, UPRNs, certificate numbers and unnecessary property-level fields were removed from the public version. The map exposes the information needed for the visualisation, primarily building type and construction period.
+
+## Final Result
+
+A public web map published through qgis2web and GitHub Pages. Vector tiles improved loading and memory use while retaining Manchester coverage; no numerical performance benchmark is claimed.
+
+The [project README](https://github.com/Solar-P/manchester-building-age-map/blob/main/README.md) documents the workflow and its data limitations.
+
+<Callout>
+Data: © OpenStreetMap contributors; OS data © Crown copyright and database right; EPC data from MHCLG under the Open Government Licence v3.0. Screenshot basemap: CARTO / OpenStreetMap, with attribution retained in the full preview.
+</Callout>
+

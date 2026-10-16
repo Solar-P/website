@@ -1,0 +1,25 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import MediaCarousel from '../../components/project/MediaCarousel.astro';
+import Gallery from '../../components/project/Gallery.astro';
+import Callout from '../../components/project/Callout.astro';
+import MediaText from '../../components/project/MediaText.astro';
+import { localPath } from '../../utils/paths';
+export async function getStaticPaths() {
+  const projects = (await getCollection('projects', ({data}) => !data.draft)).sort((a,b) => a.data.order - b.data.order);
+  return projects.map((project,index) => ({ params: {slug: project.id}, props: { project, next: projects.length > 1 ? projects[(index + 1) % projects.length] : undefined } }));
+}
+const { project, next } = Astro.props;
+const { Content, headings } = await render(project);
+const data = project.data;
+const media = data.media?.length ? data.media : data.coverImage ? [{type: 'image' as const, src: data.coverImage, alt: data.coverAlt}] : [];
+const facts = [['Role',data.role],['Geography',data.region],['Data',data.dataSources?.join(', ')],['Year',data.year?.toString()]].filter(([,value]) => value);
+---
+<BaseLayout title={data.title + ' — Linar Abzalov'} description={data.seoDescription || data.summary}>
+  <article class="container case-study"><a class="back-link" href={localPath('') + '#projects'}>← All Projects</a><header class="project-hero"><p class="eyebrow">{data.category}</p><h1>{data.title}</h1><p class="project-summary">{data.summary}</p><div class="tags">{data.technologies.map(t => <span>{t}</span>)}</div><div class="project-links">{data.liveUrl && <a class="button button-primary" href={data.liveUrl} target="_blank" rel="noopener noreferrer">Live Demo ↗</a>}{data.repositoryUrl && <a class="button button-secondary" href={data.repositoryUrl} target="_blank" rel="noopener noreferrer">GitHub ↗</a>}</div></header>
+  {media.length > 0 && <MediaCarousel items={media} />}
+  {facts.length > 0 && <dl class="project-facts">{facts.map(([label,value]) => <div><dt>{label}</dt><dd>{value}</dd></div>)}</dl>}
+  <div class="case-grid"><aside class="case-sidebar"><nav aria-label="On this page"><p class="eyebrow">ON THIS PAGE</p>{headings.filter(h => h.depth === 2).map(h => <a href={'#' + h.slug} data-heading={h.slug}>{h.text}</a>)}</nav></aside><div class="prose"><Content components={{Gallery,Callout,MediaText}} />{data.gallery && <Gallery images={data.gallery} />}</div></div>
+  <div class="next-project"><a href={localPath('') + '#projects'}>← All Projects</a>{next && <a href={localPath('projects/' + next.id + '/')}><span class="eyebrow">NEXT PROJECT</span><h3>{next.data.title} →</h3></a>}</div></article>
+</BaseLayout>

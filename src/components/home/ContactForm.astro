@@ -1,0 +1,13 @@
+---
+import { site } from '../../data/site';
+const endpoint = (import.meta.env.PUBLIC_CONTACT_ENDPOINT || site.contactEndpoint || '').trim();
+if(endpoint && !new RegExp('^https://formspree[.]io/f/[a-zA-Z0-9]+$').test(endpoint)) throw new Error('PUBLIC_CONTACT_ENDPOINT must be a Formspree form URL.');
+---
+<form class="contact-form" data-contact-form action={endpoint || undefined} method="POST" data-endpoint={endpoint} aria-label="Send a message">
+  <div class="contact-fields"><div><label for="contact-name">Name</label><input id="contact-name" name="name" autocomplete="name" required maxlength="100" /></div><div><label for="contact-email">Email</label><input id="contact-email" name="email" type="email" autocomplete="email" required maxlength="254" /></div></div>
+  <label for="contact-message">Message</label><textarea id="contact-message" name="message" rows="5" required maxlength="5000"></textarea>
+  <div class="form-trap" aria-hidden="true"><label for="contact-company">Leave this field empty</label><input id="contact-company" name="_gotcha" tabindex="-1" autocomplete="off" /></div>
+  <button class="button button-primary" type="submit" disabled={!endpoint}>Send message <span aria-hidden="true">↗</span></button>
+  <p class="form-status" data-form-status role="status" aria-live="polite">{!endpoint && <>The form is not available yet. Please email <a href={'mailto:' + site.email}>{site.email}</a>.</>}</p>
+  {endpoint && <p class="form-note">Your name, email and message are sent through <a href="https://formspree.io/legal/privacy-policy/" target="_blank" rel="noopener noreferrer">Formspree</a> so I can respond to your enquiry.</p>}
+</form>

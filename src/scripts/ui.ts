@@ -24,15 +24,31 @@ if (track && controls && prev && next) {
   track.addEventListener('keydown',event => { if (event.target !== track) return; if(event.key === 'ArrowRight' || event.key === 'ArrowLeft'){event.preventDefault();move(event.key === 'ArrowRight'?1:-1);} });
   track.addEventListener('scroll',update,{passive:true}); new ResizeObserver(update).observe(track); update();
 }
-document.querySelector<HTMLAnchorElement>('[data-explore]')?.addEventListener('click', event => {
-  if (!track) return;
-  event.preventDefault();
-  const headerHeight = header?.getBoundingClientRect().height || 88;
-  const label = document.querySelector<HTMLElement>('#projects .section-index');
-  const top = scrollY + (label || track).getBoundingClientRect().top - headerHeight - 12;
-  window.scrollTo({top, behavior: reduceMotion.matches ? 'instant' : 'smooth'});
-  history.replaceState(null, '', '#projects');
+const sectionAnchors: Record<string,string> = {
+ '#projects': '#projects .section-index',
+ '#about': '#about .section-index',
+ '#experience': '#experience .section-index',
+ '#contact': '#contact .availability',
+};
+function scrollToSection(hash: string, behavior: ScrollBehavior = reduceMotion.matches ? 'instant' : 'smooth') {
+ const selector=sectionAnchors[hash];
+ const label=selector ? document.querySelector<HTMLElement>(selector) : null;
+ if(!label)return;
+ const headerHeight=header?.getBoundingClientRect().height || 88;
+ window.scrollTo({top:scrollY+label.getBoundingClientRect().top-headerHeight-12,behavior});
+}
+document.querySelectorAll<HTMLAnchorElement>('a[href]').forEach(link=>{
+ const url=new URL(link.href);
+ if(url.origin===location.origin && url.pathname===location.pathname && sectionAnchors[url.hash] && document.querySelector(sectionAnchors[url.hash])){
+  link.addEventListener('click',event=>{
+   if(event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
+   event.preventDefault();scrollToSection(url.hash);history.replaceState(null,'',url.hash);
+  });
+ }
 });
+const alignSection=()=>requestAnimationFrame(()=>scrollToSection(location.hash,'instant'));
+if(document.readyState==='complete')alignSection();else addEventListener('load',alignSection,{once:true});
+addEventListener('hashchange',alignSection);
 const sectionLinks = [...document.querySelectorAll<HTMLAnchorElement>('[data-section]')];
 const headingLinks = [...document.querySelectorAll<HTMLAnchorElement>('[data-heading]')];
 function spy(links:HTMLAnchorElement[],key:'section'|'heading') {
@@ -82,4 +98,40 @@ document.querySelectorAll<HTMLElement>('[data-media-carousel]').forEach(carousel
   if(event.target instanceof HTMLVideoElement) return;
   if(event.key==='ArrowLeft'||event.key==='ArrowRight'){event.preventDefault();show(index+(event.key==='ArrowRight'?1:-1));}
  });
+});
+
+const contactForm=document.querySelector<HTMLFormElement>('[data-contact-form]');
+if(contactForm){
+ const status=contactForm.querySelector<HTMLElement>('[data-form-status]')!;
+ const submit=contactForm.querySelector<HTMLButtonElement>('[type="submit"]')!;
+ contactForm.addEventListener('submit',async event=>{
+  event.preventDefault();
+  const endpoint=contactForm.dataset.endpoint;
+  if(!endpoint || submit.disabled || !contactForm.reportValidity())return;
+  const values=new FormData(contactForm);
+  if(values.get('_gotcha')){status.textContent='Please reload the page and fill in the form manually; an automatic field was filled unexpectedly.';return;}
+  submit.disabled=true;contactForm.setAttribute('aria-busy','true');status.textContent='Sending your message…';
+  const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),20000);
+  try{
+   const response=await fetch(endpoint,{method:'POST',body:values,headers:{Accept:'application/json'},signal:controller.signal});
+   if(!response.ok){
+    const payload=await response.json().catch(()=>null);
+    const messages=Array.isArray(payload?.errors) ? payload.errors.map((error:{message?:unknown})=>typeof error.message==='string'?error.message:'').filter(Boolean) : [];
+    const detail=messages.join(' ') || (typeof payload?.error==='string'?payload.error:'');
+    status.textContent='Message not sent (HTTP '+response.status+'). '+(detail || 'The form service rejected the request. Please try again later or email me directly.');
+    return;
+   }
+   status.textContent='Thank you — your message has been sent.';contactForm.reset();
+  }catch(error){
+   status.textContent=error instanceof Error && error.name==='AbortError'
+    ? 'The request timed out. Delivery could not be confirmed. Your message is still here.'
+    : 'Could not connect to the form service. Check your connection and whether a browser extension is blocking Formspree. Your message is still here.';
+  }
+  finally{clearTimeout(timeout);submit.disabled=false;contactForm.removeAttribute('aria-busy');}
+ });
+}
+document.querySelector<HTMLButtonElement>('[data-copy-email]')?.addEventListener('click',async event=>{
+ const button=event.currentTarget as HTMLButtonElement;const status=document.querySelector('[data-copy-status]');
+ try{await navigator.clipboard.writeText(button.dataset.copyEmail || '');if(status)status.textContent='Email copied.';}
+ catch{if(status)status.textContent='Please select and copy the email address above.';}
 });

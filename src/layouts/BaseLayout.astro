@@ -29,7 +29,7 @@ const links = [['projects','Projects'],['about','About Me'],['experience','Exper
       <nav id="main-nav" aria-label="Main navigation">{links.map(([id,label]) => <a data-section={id} href={localPath('') + '#' + id}>{label}</a>)}</nav>
     </div></header>
     <main id="main"><slot /></main>
-    <footer class="footer-shell"><div class="container footer"><span>© {new Date().getFullYear()} {site.name}</span><a href="#top">Back to top <span aria-hidden="true">↑</span></a></div></footer>
+    <footer class="footer-shell"><div class="container footer"><div class="footer-rights"><span>© {new Date().getFullYear()} {site.name}. All rights reserved.</span><a href={localPath('usage-rights.txt')}>Usage rights</a></div><a href="#top">Back to top <span aria-hidden="true">↑</span></a></div></footer>
     <script>
       import '../scripts/ui';
     </script>
